@@ -28,6 +28,11 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 	let lastAlertedIP = null;
 
 	while (retries > 0) {
+		const dns = require("dns");
+		dns.lookup("cluster0.abcde.mongodb.net", (err, address) => {
+			if (err) console.error("❌ DNS lookup failed:", err);
+			else console.log("✅ DNS resolved to:", address);
+		});
 		try {
 			await mongoose.connect(process.env.MONGODB_URI);
 			console.log("✅ Connected to MongoDB");
