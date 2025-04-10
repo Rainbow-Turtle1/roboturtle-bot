@@ -5,4 +5,4 @@ const imageSchema = new mongooes.Schema({
 	timestamp: { type: Date, default: Date.now },
 });
 
-module.exports = mongooes.model("Image", imageSchema);
+const mongoose = require("mongoose"); // ✅ correct spelling
