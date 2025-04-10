@@ -10,28 +10,31 @@ const MONGO_URI = process.env.MONGO_URI;
 
 app.use(express.json());
 
+// Check for MONGO_URI
 if (!MONGO_URI) {
-	console.error("MONGO_URI is not defined. Please set it in the .env file.");
+	console.error("❌ MONGO_URI is not defined. Please set it in the .env file.");
 	process.exit(1);
 }
+
+// Connect to MongoDB
 mongoose.set("debug", true);
+mongoose
+	.connect(MONGO_URI)
+	.then(() => console.log("✅ API connected to MongoDB"))
+	.catch((err) => {
+		console.error("❌ API DB connection error:", err);
+		process.exit(1);
+	});
 
-mongoose.connect(process.env.MONGO_URI);
-
-// mongoose.connect(MONGO_URI)
-//   .then(() => console.log('Connected to Mongo DB'))
-//   .catch(err => {
-//     console.error('API DB connection error:', err);
-//     process.exit(1);
-//   });
-
+// Root route (optional)
 app.get("/", (req, res) => {
-	res.send("Hello, World!");
+	res.send("📡 Roboturtle API is online.");
 });
 
+// Endpoint to serve latest 30 images
 app.get("/api/images", async (req, res) => {
 	try {
-		const images = await Image.find().sort({ timestamp: -1 }).limit(30); // latest 30
+		const images = await Image.find().sort({ timestamp: -1 }).limit(30);
 		res.json(images);
 	} catch (err) {
 		console.error("❌ Failed to fetch images:", err);
@@ -39,6 +42,7 @@ app.get("/api/images", async (req, res) => {
 	}
 });
 
+// Start server
 app.listen(PORT, () => {
 	console.log(`🚀 API server running at http://localhost:${PORT}`);
 });
