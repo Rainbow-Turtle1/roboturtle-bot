@@ -41,36 +41,41 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 					err
 				);
 
-				https.get("https://api.ipify.org", (res) => {
-					let ip = "";
-					res.on("data", (chunk) => (ip += chunk));
-					res.on("end", async () => {
-						console.log(`Render outbound IP: ${ip}`);
+				// Wrap the IP + alert in a Promise and await it
+				await new Promise((resolve) => {
+					https.get("https://api.ipify.org", (res) => {
+						let ip = "";
+						res.on("data", (chunk) => (ip += chunk));
+						res.on("end", async () => {
+							console.log(`🌐 Render outbound IP: ${ip}`);
 
-						try {
-							const tempClient = new Client({
-								intents: [GatewayIntentBits.Guilds],
-							});
-							await tempClient.login(process.env.DISCORD_TOKEN);
+							try {
+								const tempClient = new Client({
+									intents: [GatewayIntentBits.Guilds],
+								});
+								await tempClient.login(process.env.DISCORD_TOKEN);
 
-							const channel = await tempClient.channels.fetch(
-								"883631359699087380"
-							);
-							if (channel && channel.isTextBased()) {
-								await channel.send(
-									`ERR - Unable to access MongoDB.\nIP \`${ip}\` may not be whitelisted.`
+								const channel = await tempClient.channels.fetch(
+									"883631359699087380"
 								);
-								console.log("Alerted Discord mods.");
+								if (channel && channel.isTextBased()) {
+									await channel.send(
+										`ERR - Unable to access MongoDB.\nIP \`${ip}\` may not be whitelisted.`
+									);
+									console.log("📣 Alert sent to Discord.");
+								}
+
+								await tempClient.destroy();
+							} catch (e) {
+								console.error("❌ Failed to send alert message to Discord:", e);
 							}
 
-							await tempClient.destroy();
-						} catch (e) {
-							console.error("Failed to send alert message to Discord:", e);
-						}
-
-						process.exit(1);
+							resolve(); // resolve the outer Promise once alert is sent
+						});
 					});
 				});
+
+				process.exit(1); // exit only after everything's done
 			}
 
 			await new Promise((res) => setTimeout(res, delay));
