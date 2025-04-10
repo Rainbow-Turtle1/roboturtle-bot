@@ -32,6 +32,8 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 			await mongoose.connect(process.env.MONGODB_URI);
 			console.log("✅ Connected to MongoDB");
 			dbReady = true;
+
+			// Notify success
 			try {
 				const tempClient = new Client({
 					intents: [GatewayIntentBits.Guilds],
@@ -47,6 +49,7 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 			} catch (e) {
 				console.error("⚠️ Failed to send success message:", e);
 			}
+
 			break;
 		} catch (err) {
 			retries--;
@@ -57,49 +60,52 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 				`[${new Date().toISOString()}] ❌ MongoDB connection failed. Retrying in ${retryTime}min... (Attempt ${retryNum}/10)`
 			);
 
-			await new Promise((resolve) => {
-				https.get("https://api.ipify.org", (res) => {
-					let ip = "";
-					res.on("data", (chunk) => (ip += chunk));
-					res.on("end", async () => {
-						console.log(`🌐 Current Render IP: ${ip}`);
+			// Fetch IP and send retry alert
+			await new Promise((resolve, reject) => {
+				https
+					.get("https://api.ipify.org", (res) => {
+						let ip = "";
+						res.on("data", (chunk) => (ip += chunk));
+						res.on("end", () => {
+							(async () => {
+								console.log(`🌐 Current Render IP: ${ip}`);
 
-						// Only alert again if IP changed OR always alert
-						if (ip !== lastAlertedIP || true) {
-							try {
-								const tempClient = new Client({
-									intents: [GatewayIntentBits.Guilds],
-								});
-								await tempClient.login(process.env.DISCORD_TOKEN);
+								try {
+									const tempClient = new Client({
+										intents: [GatewayIntentBits.Guilds],
+									});
+									await tempClient.login(process.env.DISCORD_TOKEN);
 
-								const channel = await tempClient.channels.fetch(
-									"883631359699087380"
-								);
-								if (channel && channel.isTextBased()) {
-									await channel.send(
-										`🚨 MongoDB connection attempt **${retryNum}/10** failed.\nIP \`${ip}\` may not be whitelisted.\nRetrying in ${retryTime}min...`
+									const channel = await tempClient.channels.fetch(
+										"883631359699087380"
 									);
-									console.log("📣 Retry alert sent to Discord.");
+									if (channel && channel.isTextBased()) {
+										await channel.send(
+											`🚨 MongoDB connection attempt **${retryNum}/10** failed.\nIP \`${ip}\` may not be whitelisted.\nRetrying in ${retryTime}min...`
+										);
+										console.log("📣 Retry alert sent to Discord.");
+									}
+
+									await tempClient.destroy();
+									lastAlertedIP = ip;
+								} catch (e) {
+									console.error("❌ Failed to send retry alert:", e);
 								}
 
-								await tempClient.destroy();
-								lastAlertedIP = ip;
-							} catch (e) {
-								console.error("❌ Failed to send retry alert:", e);
-							}
-						}
-
-						resolve();
-					});
-				});
+								resolve();
+							})();
+						});
+					})
+					.on("error", reject);
 			});
 
-			// If this was the last retry, exit
+			// Final attempt has failed
 			if (retries === 0) {
 				console.error("💀 Could not connect after final retry. Exiting...");
 				process.exit(1);
 			}
 
+			// Wait for next retry
 			await new Promise((res) => setTimeout(res, delay));
 		}
 	}
