@@ -24,7 +24,7 @@ client.once("ready", () => {
 });
 
 // MongoDB connection with retry logic
-async function connectWithRetry(retries = 10, delay = 600000) {
+async function connectWithRetry(retries = 10, delay = 60000) {
 	let lastAlertedIP = null;
 
 	while (retries > 0) {
