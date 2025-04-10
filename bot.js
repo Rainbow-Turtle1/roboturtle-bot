@@ -3,29 +3,7 @@ const cron = require("node-cron");
 const { Client, GatewayIntentBits } = require("discord.js");
 const mongoose = require("mongoose");
 const Image = require("./models/image.js");
-
-const APPROVAL_CHANNEL_ID = "1324409075508707358";
-const APPROVER_ROLE_ID = "933764897135792168";
-
 const https = require("https");
-
-https.get("https://api.ipify.org", (res) => {
-	let ip = "";
-	res.on("data", (chunk) => (ip += chunk));
-	res.on("end", () => {
-		console.log(`🌐 Render's outbound IP is: ${ip}`);
-	});
-});
-
-// MongoDB connect
-mongoose
-	.connect(process.env.MONGO_URI)
-	.then(() => {
-		console.log("✅ Connected to MongoDB");
-	})
-	.catch((err) => {
-		console.error("❌ Failed to connect to MongoDB:", err);
-	});
 
 // Create Discord client
 const client = new Client({
@@ -39,12 +17,72 @@ const client = new Client({
 
 // When bot is ready
 client.once("ready", () => {
-	console.log(`${client.user.tag} is online`);
+	console.log(`🤖 Bot is online as ${client.user.tag}`);
 });
 
-// Handle new messages
+// MongoDB connection with retry logic
+async function connectWithRetry(retries = 10, delay = 600000) {
+	while (retries > 0) {
+		try {
+			await mongoose.connect(process.env.MONGODB_URI);
+			console.log("✅ Connected to MongoDB");
+			break;
+		} catch (err) {
+			retries--;
+			console.warn(
+				`❌ Failed to connect to MongoDB. Retrying in ${
+					delay / 60000
+				}min... (${retries} retries left)`
+			);
+
+			if (retries === 0) {
+				console.error(
+					"Could not connect to MongoDB after multiple attempts:",
+					err
+				);
+
+				https.get("https://api.ipify.org", (res) => {
+					let ip = "";
+					res.on("data", (chunk) => (ip += chunk));
+					res.on("end", async () => {
+						console.log(`Render outbound IP: ${ip}`);
+
+						try {
+							const tempClient = new Client({
+								intents: [GatewayIntentBits.Guilds],
+							});
+							await tempClient.login(process.env.DISCORD_TOKEN);
+
+							const channel = await tempClient.channels.fetch(
+								"883631359699087380"
+							);
+							if (channel && channel.isTextBased()) {
+								await channel.send(
+									`ERR - Unable to access MongoDB.\nIP \`${ip}\` may not be whitelisted.`
+								);
+								console.log("Alerted Discord mods.");
+							}
+
+							await tempClient.destroy();
+						} catch (e) {
+							console.error("Failed to send alert message to Discord:", e);
+						}
+
+						process.exit(1);
+					});
+				});
+			}
+
+			await new Promise((res) => setTimeout(res, delay));
+		}
+	}
+}
+
+// Image approval flow
+const APPROVAL_CHANNEL_ID = "1324409075508707358";
+const APPROVER_ROLE_ID = "933764897135792168";
+
 client.on("messageCreate", async (message) => {
-	// Ignore bot messages
 	if (message.author.bot) return;
 
 	const isMentioned = message.mentions.has(client.user);
@@ -53,37 +91,31 @@ client.on("messageCreate", async (message) => {
 		.toLowerCase()
 		.includes("go back to the kitchen");
 
-	// Sandwich reaction
 	if (isMentioned && containsSandwich) {
 		await message.reply(":bread:\n:cheese:\n:leafy_green:\n:bread:");
-		setTimeout(() => {
-			message.channel.send(":palm_up_hand: :sandwich:");
-		}, 2000);
+		setTimeout(() => message.channel.send(":palm_up_hand: :sandwich:"), 2000);
 		return;
 	}
 
-	// Angry kitchen reaction
 	if (isMentioned && gotokitchen) {
 		await message.reply(":angry:");
 		try {
 			await message.react("🍅");
 		} catch (err) {
-			console.error("Failed to tomato react:", err);
+			console.error("❌ Failed to tomato react:", err);
 		}
 		return;
 	}
 
-	// Confused fallback
 	if (isMentioned) {
 		try {
 			await message.react("❓");
 		} catch (err) {
-			console.error("❌ Failed to handle unknown mention:", err);
+			console.error("❌ Failed to react to unknown mention:", err);
 		}
 		return;
 	}
 
-	// Only process image messages from the designated channel
 	if (message.channel.id !== process.env.CHANNEL_ID) return;
 
 	const images = message.attachments.filter((att) =>
@@ -99,12 +131,10 @@ client.on("messageCreate", async (message) => {
 
 		for (const [, image] of images) {
 			try {
-				// 1. Send image to approval channel
 				const approvalMsg = await approvalChannel.send({
 					content: `🖼️ Awaiting approval for image:\n${image.url}`,
 				});
 
-				// 2. Add reaction
 				await approvalMsg.react("✅");
 
 				const filter = (reaction, user) =>
@@ -121,13 +151,11 @@ client.on("messageCreate", async (message) => {
 
 				if (collected && collected.size > 0) {
 					const reaction = collected.first();
-					await reaction.users.fetch(); // Ensure user cache is fresh
+					await reaction.users.fetch();
 					const user = reaction.users.cache.find((u) => !u.bot);
 
 					await Image.create({ url: image.url });
-					console.log(
-						`✅ Image approved by ${user?.tag}. Saved to DB: ${image.url}`
-					);
+					console.log(`✅ Image approved by ${user?.tag}. Saved: ${image.url}`);
 					await approvalMsg.reply(
 						`✅ Approved by ${user?.username}. Image saved!`
 					);
@@ -142,7 +170,7 @@ client.on("messageCreate", async (message) => {
 	}
 });
 
-// Daily good morning message (10:00 UTC)
+// Daily good morning message at 10:00 UTC
 cron.schedule(
 	"0 10 * * *",
 	async () => {
@@ -188,5 +216,7 @@ cron.schedule(
 	}
 );
 
-// Login bot
-client.login(process.env.DISCORD_TOKEN);
+// Connect to MongoDB first, then log in to Discord
+connectWithRetry().then(() => {
+	client.login(process.env.DISCORD_TOKEN);
+});
