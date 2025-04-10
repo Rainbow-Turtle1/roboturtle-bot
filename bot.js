@@ -8,6 +8,17 @@ const https = require("https");
 // Flag to check DB connection state
 let dbReady = false;
 
+const dns = require("dns");
+dns.resolve4("cluster0.vtgmyui.mongodb.net", (err, addresses) => {
+	if (err) console.error("❌ cluster0 DNS lookup failed:", err);
+	else console.log("✅ cluster0 resolved to:", addresses);
+});
+
+dns.resolve4("ac-2nz0mgn-shard-00-00.vtgmyui.mongodb.net", (err, addresses) => {
+	if (err) console.error("❌ shard DNS lookup failed:", err);
+	else console.log("✅ shard hostname resolved to:", addresses);
+});
+
 // Create Discord client
 const client = new Client({
 	intents: [
@@ -28,11 +39,6 @@ async function connectWithRetry(retries = 10, delay = 60000) {
 	let lastAlertedIP = null;
 
 	while (retries > 0) {
-		const dns = require("dns");
-		dns.lookup("cluster0.abcde.mongodb.net", (err, address) => {
-			if (err) console.error("❌ DNS lookup failed:", err);
-			else console.log("✅ DNS resolved to:", address);
-		});
 		try {
 			await mongoose.connect(process.env.MONGODB_URI);
 			console.log("✅ Connected to MongoDB");

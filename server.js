@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 
-const Image = require("./models/Image");
+const Image = require("./models/image.js");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
