@@ -7,7 +7,9 @@ const Image = require("./models/image.js");
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
+const cors = require("cors");
 
+app.use(cors());
 app.use(express.json());
 
 // Check for MONGO_URI
@@ -16,7 +18,7 @@ if (!MONGO_URI) {
 	process.exit(1);
 }
 
-// Connect to MongoDB
+// Connect to DB
 mongoose.set("debug", true);
 mongoose
 	.connect(MONGO_URI)
@@ -26,12 +28,12 @@ mongoose
 		process.exit(1);
 	});
 
-// Root route (optional)
+//  route
 app.get("/", (req, res) => {
 	res.send("📡 Roboturtle API is online.");
 });
 
-// Endpoint to serve latest 30 images
+// Endpoint - latest 30 images
 app.get("/api/images", async (req, res) => {
 	try {
 		const images = await Image.find().sort({ timestamp: -1 }).limit(30);
@@ -42,7 +44,7 @@ app.get("/api/images", async (req, res) => {
 	}
 });
 
-// Start server
+//server
 app.listen(PORT, () => {
 	console.log(`🚀 API server running at http://localhost:${PORT}`);
 });
