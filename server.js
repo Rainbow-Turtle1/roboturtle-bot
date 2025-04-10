@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
+const axios = require("axios");
 
 const Image = require("./models/image.js");
 
@@ -11,6 +12,20 @@ const cors = require("cors");
 
 app.use(cors());
 app.use(express.json());
+
+app.get("/proxy-image", async (req, res) => {
+	const imageUrl = req.query.url;
+	if (!imageUrl) return res.status(400).send("Missing URL");
+
+	try {
+		const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+		res.set("Content-Type", response.headers["content-type"]);
+		res.send(response.data);
+	} catch (err) {
+		console.error("Failed to proxy image:", err);
+		res.status(500).send("Proxy failed");
+	}
+});
 
 // Check for MONGO_URI
 if (!MONGO_URI) {
