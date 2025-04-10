@@ -32,6 +32,21 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 			await mongoose.connect(process.env.MONGODB_URI);
 			console.log("✅ Connected to MongoDB");
 			dbReady = true;
+			try {
+				const tempClient = new Client({
+					intents: [GatewayIntentBits.Guilds],
+				});
+				await tempClient.login(process.env.DISCORD_TOKEN);
+
+				const channel = await tempClient.channels.fetch("883631359699087380");
+				if (channel && channel.isTextBased()) {
+					await channel.send("✅ Successfully connected to MongoDB.");
+					console.log("📣 Success alert sent to Discord.");
+				}
+				await tempClient.destroy();
+			} catch (e) {
+				console.error("⚠️ Failed to send success message:", e);
+			}
 			break;
 		} catch (err) {
 			retries--;
