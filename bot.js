@@ -5,6 +5,9 @@ const mongoose = require("mongoose");
 const Image = require("./models/image.js");
 const https = require("https");
 
+// Flag to check DB connection state
+let dbReady = false;
+
 // Create Discord client
 const client = new Client({
 	intents: [
@@ -26,22 +29,23 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 		try {
 			await mongoose.connect(process.env.MONGODB_URI);
 			console.log("✅ Connected to MongoDB");
+			dbReady = true;
 			break;
 		} catch (err) {
 			retries--;
 			console.warn(
-				`❌ Failed to connect to MongoDB. Retrying in ${
+				`[${new Date().toISOString()}] ❌ Failed to connect to MongoDB. Retrying in ${
 					delay / 60000
 				}min... (${retries} retries left)`
 			);
 
 			if (retries === 0) {
 				console.error(
-					"Could not connect to MongoDB after multiple attempts:",
+					"💀 Could not connect to MongoDB after multiple attempts:",
 					err
 				);
 
-				// Wrap the IP + alert in a Promise and await it
+				// Fetch IP + send alert to Discord mods
 				await new Promise((resolve) => {
 					https.get("https://api.ipify.org", (res) => {
 						let ip = "";
@@ -55,12 +59,12 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 								});
 								await tempClient.login(process.env.DISCORD_TOKEN);
 
-								const channel = await tempClient.channels.fetch(
+								const alertChannel = await tempClient.channels.fetch(
 									"883631359699087380"
 								);
-								if (channel && channel.isTextBased()) {
-									await channel.send(
-										`ERR - Unable to access MongoDB.\nIP \`${ip}\` may not be whitelisted.`
+								if (alertChannel && alertChannel.isTextBased()) {
+									await alertChannel.send(
+										`🚨 Unable to access MongoDB.\nIP \`${ip}\` may not be whitelisted.`
 									);
 									console.log("📣 Alert sent to Discord.");
 								}
@@ -70,12 +74,12 @@ async function connectWithRetry(retries = 10, delay = 600000) {
 								console.error("❌ Failed to send alert message to Discord:", e);
 							}
 
-							resolve(); // resolve the outer Promise once alert is sent
+							resolve();
 						});
 					});
 				});
 
-				process.exit(1); // exit only after everything's done
+				process.exit(1);
 			}
 
 			await new Promise((res) => setTimeout(res, delay));
@@ -120,6 +124,8 @@ client.on("messageCreate", async (message) => {
 		}
 		return;
 	}
+
+	if (!dbReady) return; // skip DB-dependent logic
 
 	if (message.channel.id !== process.env.CHANNEL_ID) return;
 
@@ -221,7 +227,6 @@ cron.schedule(
 	}
 );
 
-// Connect to MongoDB first, then log in to Discord
-connectWithRetry().then(() => {
-	client.login(process.env.DISCORD_TOKEN);
-});
+// Log in to Discord and then begin retry loop in parallel
+client.login(process.env.DISCORD_TOKEN);
+connectWithRetry(); // Don't await it — let it retry in background
