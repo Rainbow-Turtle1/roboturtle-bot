@@ -2,7 +2,7 @@ require("dotenv").config();
 const cron = require("node-cron");
 const { Client, GatewayIntentBits } = require("discord.js");
 const mongoose = require("mongoose");
-const Image = require("./models/Image.js");
+const Image = require("./models/image.js");
 
 const APPROVAL_CHANNEL_ID = "1324409075508707358";
 const APPROVER_ROLE_ID = "933764897135792168";
