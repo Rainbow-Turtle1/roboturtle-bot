@@ -5,4 +5,4 @@ const imageSchema = new mongooes.Schema({
 	timestamp: { type: Date, default: Date.now },
 });
 
-const mongoose = require("mongoose"); // ✅ correct spelling
+const mongoose = require("mongoose");
