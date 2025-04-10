@@ -7,7 +7,17 @@ const Image = require("./models/image.js");
 const APPROVAL_CHANNEL_ID = "1324409075508707358";
 const APPROVER_ROLE_ID = "933764897135792168";
 
-// Connect to MongoDB
+const https = require("https");
+
+https.get("https://api.ipify.org", (res) => {
+	let ip = "";
+	res.on("data", (chunk) => (ip += chunk));
+	res.on("end", () => {
+		console.log(`🌐 Render's outbound IP is: ${ip}`);
+	});
+});
+
+// MongoDB connect
 mongoose
 	.connect(process.env.MONGO_URI)
 	.then(() => {
