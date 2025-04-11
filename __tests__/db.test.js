@@ -7,7 +7,11 @@ describe("MongoDB Image Model", () => {
 	const testUrl = "https://test-db.com/image.jpg";
 
 	beforeAll(async () => {
-		await mongoose.connect(process.env.MONGO_URI);
+		const uri = process.env.TEST_URI || process.env.MONGO_URI;
+		await mongoose.connect(uri, {
+			useNewUrlParser: true,
+			useUnifiedTopology: true,
+		});
 	});
 
 	afterAll(async () => {
