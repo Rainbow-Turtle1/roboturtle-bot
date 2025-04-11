@@ -103,3 +103,120 @@ PORT=5000
 ```npm test```
 _Unfortunately due to the nature of the discord bot it can only be tested manually.
 In addition to this in order to allow testing of the database access the user must have their IP whitelisted and if using github actions to test then the user must enable access from any IP on the database temporarily._
+
+
+## Feature Overview
+
+### Discord Bot Listener
+
+**Purpose:**  
+Listens for image messages in a designated Discord channel and forwards them for storage after a manual moderator check.
+
+**Code Location:**  
+`bot.js` – Main bot logic.
+
+- Utilizes Discord.js v14 to handle incoming messages, filter image attachments, and interact with channels.
+
+---
+
+### Image API
+
+**Purpose:**  
+Provides a REST API for retrieving stored images for the frontend application.
+
+**Code Location:**  
+- `server.js` – Contains the Express app and route logic.  
+- `models/image.js` – Defines the Mongoose schema for storing image metadata.
+
+**Endpoints:**
+- `GET /api/images`: Returns up to 30 of the most recent approved images.
+- `GET /api/images?cursor=<id>`: Enables paginated access to older images.
+
+---
+
+### MongoDB Integration
+
+**Purpose:**  
+Stores the validated image URLs and timestamp.
+
+**Code Location:**  
+`models/image.js` – Defines schema:
+
+```js
+{
+  url: String,
+  date: Date
+}
+```
+## Database Collections
+
+- `discord_images.images`: Collection for production data.
+- `test.images`: Separated collection for testing.
+
+---
+
+## Continuous Integration with GitHub Actions
+
+**Purpose:**  
+Ensures updates to code do not break key functionality before merge/push to main.
+
+**Code Location:**  
+`.github/workflows/test.yml` – CI pipeline triggered on push to main/master.
+
+**Configuration Highlights:**
+- Secure usage of GitHub Secrets to inject environment variables.
+- Runs Jest tests.
+
+---
+
+## Testing
+
+**Purpose:**  
+Validates that the key behaviors of the bot and API are functional.
+
+**Code Location:**
+- `__tests__/db.test.js` – Tests database write and delete operations.
+- `__tests__/api.test.js` – Tests image API responses and pagination logic.
+
+---
+
+## Known Issues & Future Enhancements
+
+- **Image URL Expiry:** Some Discord-hosted image URLs may expire over time. This could be mitigated by downloading and serving images from cloud storage in a future version.
+- **Manual Moderation Flow:** Currently approvals are not automated. This means it relies on human discord moderators to screen content. An AI image recognition model could be used to approve images in future.
+- **Rate Limiting:** API rate limiting not yet implemented. This would be important if endpoints were experiencing high-traffic usage.
+- **Duplicate Detection:** No hashing or comparison is currently done to prevent duplicate image entries. I intended to add this however fell short on time.
+
+---
+
+## References
+
+- [Discordjs.guide](https://discordjs.guide/)  
+  Used to interact with the Discord API and create the bot’s functionality.
+
+- [Express.js](https://expressjs.com)  
+  Used to create the REST API and handle HTTP requests in the service layer.
+
+- [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)  
+  Hosted cloud database solution used for storing image metadata securely.
+
+- [Mongoose](https://mongoosejs.com)  
+  ODM used to interact with MongoDB using schema-based models.
+
+- [Axios](https://axios-http.com)  
+  Used for making HTTP requests to fetch image data during proxying.
+
+- [Jest](https://jestjs.io)  
+  Used for unit and integration testing of the service layer and database logic.
+
+- [Render](https://render.com)  
+  Cloud platform used to host both the API and the bot worker.
+
+- [GitHub Actions](https://github.com/features/actions)  
+  CI/CD tool used to automatically test and deploy the application on code changes.
+
+- [dotenv](https://www.npmjs.com/package/dotenv)  
+  Manages environment variables for secure configuration.
+
+- [Node.js](https://nodejs.org)  
+  JavaScript runtime used for developing both the bot and API server.
