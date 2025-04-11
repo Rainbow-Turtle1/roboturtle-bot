@@ -80,13 +80,11 @@ This repo is deployed to two instances of Render to allow automatic deployment o
 git clone https://github.com/Rainbow-Turtle1/roboturtle.git
 cd roboturtle
 ```
-**Install dependencies
-**
+**Install dependencies**
 ```bash
 npm install
 ```
-**Configure environment
-**
+**Configure environment**
 Create a .env file in the root directory:
 ```
 DISCORD_TOKEN=your_discord_bot_token
