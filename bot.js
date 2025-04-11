@@ -5,21 +5,23 @@ const mongoose = require("mongoose");
 const Image = require("./models/image.js");
 const https = require("https");
 
-// Flag to check DB connection state
+const APPROVAL_CHANNEL_ID = "1324409075508707358";
+const APPROVER_ROLE_ID = "933764897135792168";
+
+// bool for DB connection state
 let dbReady = false;
 
 // const dns = require("dns");
 // dns.resolve4("cluster0.vtgmyui.mongodb.net", (err, addresses) => {
-// 	if (err) console.error("❌ cluster0 DNS lookup failed:", err);
-// 	else console.log("✅ cluster0 resolved to:", addresses);
+// 	if (err) console.error("cluster0 DNS lookup failed:", err);
+// 	else console.log("cluster0 resolved to:", addresses);
 // });
 
 // dns.resolve4("ac-2nz0mgn-shard-00-00.vtgmyui.mongodb.net", (err, addresses) => {
-// 	if (err) console.error("❌ shard DNS lookup failed:", err);
-// 	else console.log("✅ shard hostname resolved to:", addresses);
+// 	if (err) console.error("shard DNS lookup failed:", err);
+// 	else console.log("shard hostname resolved to:", addresses);
 // });
 
-// Create Discord client
 const client = new Client({
 	intents: [
 		GatewayIntentBits.Guilds,
@@ -29,12 +31,12 @@ const client = new Client({
 	],
 });
 
-// When bot is ready
+// log when bot is online
 client.once("ready", () => {
 	console.log(`🤖 Bot is online as ${client.user.tag}`);
 });
 
-// MongoDB connection with retry logic
+// DB connection with retry - incase of IP address changes that may stop it being allowed to access DB
 async function connectWithRetry(retries = 10, delay = 180000) {
 	let lastAlertedIP = null;
 
@@ -44,7 +46,6 @@ async function connectWithRetry(retries = 10, delay = 180000) {
 			console.log("✅ Connected to MongoDB");
 			dbReady = true;
 
-			// Notify success
 			try {
 				const tempClient = new Client({
 					intents: [GatewayIntentBits.Guilds],
@@ -71,7 +72,7 @@ async function connectWithRetry(retries = 10, delay = 180000) {
 				`[${new Date().toISOString()}] ❌ MongoDB connection failed. Retrying in ${retryTime}min... (Attempt ${retryNum}/10)`
 			);
 
-			// Fetch IP and send retry alert
+			// log current IP and alert log
 			await new Promise((resolve, reject) => {
 				https
 					.get("https://api.ipify.org", (res) => {
@@ -110,21 +111,15 @@ async function connectWithRetry(retries = 10, delay = 180000) {
 					.on("error", reject);
 			});
 
-			// Final attempt has failed
 			if (retries === 0) {
-				console.error("💀 Could not connect after final retry. Exiting...");
+				console.error("Could not connect after final retry. Exiting...");
 				process.exit(1);
 			}
 
-			// Wait for next retry
 			await new Promise((res) => setTimeout(res, delay));
 		}
 	}
 }
-
-// Image approval flow
-const APPROVAL_CHANNEL_ID = "1324409075508707358";
-const APPROVER_ROLE_ID = "933764897135792168";
 
 client.on("messageCreate", async (message) => {
 	if (message.author.bot) return;
@@ -160,7 +155,7 @@ client.on("messageCreate", async (message) => {
 		return;
 	}
 
-	if (!dbReady) return; // skip DB-dependent logic
+	if (!dbReady) return; // if no DBconnection skip DB-dependent logic to stop errors
 
 	if (message.channel.id !== process.env.CHANNEL_ID) return;
 
@@ -178,13 +173,14 @@ client.on("messageCreate", async (message) => {
 		for (const [, image] of images) {
 			try {
 				const approvalMsg = await approvalChannel.send({
-					content: `🖼️ Awaiting approval for image:\n${image.url}`,
+					content: `🖼️ Awaiting approval for image:\n *Approval Criteria:*\n - the photo is of somethign that is considered a pet \n it does not show anything that might be personal information (address information, bank information, real name information etc) \n - image does not contain anything against server rules\n ${image.url}`,
 				});
 
 				await approvalMsg.react("✅");
+				await approvalMsg.react("❌");
 
 				const filter = (reaction, user) =>
-					reaction.emoji.name === "✅" && !user.bot;
+					["✅", "❌"].includes(reaction.emoji.name) && !user.bot;
 
 				const collected = await approvalMsg
 					.awaitReactions({
@@ -200,11 +196,20 @@ client.on("messageCreate", async (message) => {
 					await reaction.users.fetch();
 					const user = reaction.users.cache.find((u) => !u.bot);
 
-					await Image.create({ url: image.url });
-					console.log(`✅ Image approved by ${user?.tag}. Saved: ${image.url}`);
-					await approvalMsg.reply(
-						`✅ Approved by ${user?.username}. Image saved!`
-					);
+					if (reaction.emoji.name === "✅") {
+						await Image.create({ url: image.url });
+						console.log(
+							`✅ Image approved by ${user?.tag}. Saved: ${image.url}`
+						);
+						await approvalMsg.reply(
+							`✅ Approved by ${user?.username}. Image saved!`
+						);
+					} else if (reaction.emoji.name === "❌") {
+						console.log(`❌ Image rejected by ${user?.tag}. Not saved.`);
+						await approvalMsg.reply(
+							`❌ Rejected by ${user?.username}. Image not saved.`
+						);
+					}
 				} else {
 					await approvalMsg.reply("⏱️ Approval time expired. Image not saved.");
 					console.log("⏱️ Approval timed out");
@@ -216,9 +221,9 @@ client.on("messageCreate", async (message) => {
 	}
 });
 
-// Daily good morning message at 10:00 UTC
+// Daily good morning message at 8 am server time
 cron.schedule(
-	"0 10 * * *",
+	"0 8 * * *",
 	async () => {
 		const channelId = "883628937329147916";
 		const channel = await client.channels.fetch(channelId);
@@ -262,6 +267,5 @@ cron.schedule(
 	}
 );
 
-// Log in to Discord and then begin retry loop in parallel
 client.login(process.env.DISCORD_TOKEN);
-connectWithRetry(); // Don't await it — let it retry in background
+connectWithRetry(); // background process
