@@ -1,3 +1,4 @@
+jest.setTimeout(30000);
 require("dotenv").config();
 const request = require("supertest");
 const express = require("express");

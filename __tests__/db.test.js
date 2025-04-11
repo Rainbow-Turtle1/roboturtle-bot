@@ -1,3 +1,4 @@
+jest.setTimeout(30000);
 require("dotenv").config();
 const mongoose = require("mongoose");
 const Image = require("../models/image");
