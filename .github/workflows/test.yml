@@ -12,6 +12,7 @@ jobs:
 
     env:
       MONGO_URI: ${{ secrets.MONGO_URI }}
+      TEST_URI: ${{ secrets.TEST_URI }}
 
     steps:
       - name: Checkout code
@@ -26,4 +27,4 @@ jobs:
         run: npm install
 
       - name: Run tests
-        run: npx jest --coverage
+        run: NODE_ENV=test npx jest --coverage
