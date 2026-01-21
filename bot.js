@@ -1,6 +1,11 @@
 require("dotenv").config();
 const cron = require("node-cron");
-const { Client, GatewayIntentBits } = require("discord.js");
+const {
+	Client,
+	GatewayIntentBits,
+	ChannelType,
+	PermissionFlagsBits,
+} = require("discord.js");
 const mongoose = require("mongoose");
 const Image = require("./models/image.js");
 const https = require("https");
@@ -11,16 +16,8 @@ const APPROVER_ROLE_ID = "933764897135792168";
 // bool for DB connection state
 let dbReady = false;
 
-// const dns = require("dns");
-// dns.resolve4("cluster0.vtgmyui.mongodb.net", (err, addresses) => {
-// 	if (err) console.error("cluster0 DNS lookup failed:", err);
-// 	else console.log("cluster0 resolved to:", addresses);
-// });
-
-// dns.resolve4("ac-2nz0mgn-shard-00-00.vtgmyui.mongodb.net", (err, addresses) => {
-// 	if (err) console.error("shard DNS lookup failed:", err);
-// 	else console.log("shard hostname resolved to:", addresses);
-// });
+// Track temporary PUG channels
+const tempChannels = new Map();
 
 const client = new Client({
 	intents: [
@@ -28,12 +25,15 @@ const client = new Client({
 		GatewayIntentBits.GuildMessages,
 		GatewayIntentBits.MessageContent,
 		GatewayIntentBits.GuildMessageReactions,
+		GatewayIntentBits.GuildVoiceStates, // Added for voice channel functionality
 	],
 });
 
 // log when bot is online
 client.once("ready", () => {
 	console.log(`🤖 Bot is online as ${client.user.tag}`);
+	// Start cleanup task for temporary channels
+	startChannelCleanup();
 });
 
 // DB connection with retry - incase of IP address changes that may stop it being allowed to access DB
@@ -121,6 +121,191 @@ async function connectWithRetry(retries = 10, delay = 180000) {
 	}
 }
 
+// PUG command handler
+async function handlePugCommand(message) {
+	try {
+		// Check if user has moderator permissions
+		if (!message.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+			await message.reply(
+				"❌ You need 'Manage Channels' permission to use this command."
+			);
+			return;
+		}
+
+		// Check if user is in a voice channel
+		if (!message.member.voice || !message.member.voice.channel) {
+			await message.reply(
+				"❌ You must be in a voice channel to use this command."
+			);
+			return;
+		}
+
+		// Parse N and S from message
+		const content = message.content.toLowerCase();
+
+		// Extract N (number of teams)
+		const nMatch = content.match(/n\s*(\d+)/);
+		const sMatch = content.match(/s\s*(\d+)/);
+
+		if (!nMatch || !sMatch) {
+			await message.reply(
+				"❌ Invalid format. Use: `@bot pug us N<teams> S<size>`\nExample: `@bot pug us N2 S5`"
+			);
+			return;
+		}
+
+		const numTeams = parseInt(nMatch[1]);
+		const teamSize = parseInt(sMatch[1]);
+
+		if (numTeams < 1 || teamSize < 1) {
+			await message.reply(
+				"❌ Number of teams and team size must be at least 1."
+			);
+			return;
+		}
+
+		// Get the voice channel and members
+		const voiceChannel = message.member.voice.channel;
+		const members = voiceChannel.members.filter((m) => !m.user.bot);
+
+		if (members.size < numTeams) {
+			await message.reply(
+				`❌ Not enough members in the voice channel. Need at least ${numTeams} members for ${numTeams} teams.`
+			);
+			return;
+		}
+
+		const expectedTotal = numTeams * teamSize;
+		if (members.size > expectedTotal) {
+			await message.reply(
+				`⚠️ Warning: ${
+					members.size
+				} members available, but only ${expectedTotal} will be split into teams. ${
+					members.size - expectedTotal
+				} will remain in the original channel.`
+			);
+		}
+
+		// Shuffle members randomly
+		const memberArray = Array.from(members.values());
+		for (let i = memberArray.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[memberArray[i], memberArray[j]] = [memberArray[j], memberArray[i]];
+		}
+
+		// Create teams
+		const teams = [];
+		for (let i = 0; i < numTeams; i++) {
+			const team = memberArray.slice(i * teamSize, (i + 1) * teamSize);
+			if (team.length > 0) {
+				teams.push(team);
+			}
+		}
+
+		// Create temporary voice channels and move members
+		const guild = message.guild;
+		const category = voiceChannel.parent;
+
+		const createdChannels = [];
+
+		const statusMsg = await message.reply(
+			`🎮 Creating ${teams.length} team channels...`
+		);
+
+		for (let i = 0; i < teams.length; i++) {
+			const team = teams[i];
+
+			// Create temporary voice channel
+			const channelName = `Team ${i + 1} - PUG`;
+			const tempChannel = await guild.channels.create({
+				name: channelName,
+				type: ChannelType.GuildVoice,
+				parent: category,
+				reason: `PUG split requested by ${message.author.tag}`,
+			});
+
+			// Store channel info
+			tempChannels.set(tempChannel.id, {
+				channel: tempChannel,
+				createdAt: Date.now(),
+				lastOccupied: Date.now(),
+			});
+
+			createdChannels.push(tempChannel);
+
+			// Move members to the new channel
+			for (const member of team) {
+				try {
+					await member.voice.setChannel(tempChannel);
+				} catch (e) {
+					console.error(`❌ Failed to move ${member.user.tag}:`, e);
+				}
+			}
+		}
+
+		// Update status message
+		const teamList = teams
+			.map(
+				(team, i) =>
+					`**Team ${i + 1}**: ${team.map((m) => m.displayName).join(", ")}`
+			)
+			.join("\n");
+
+		await statusMsg.edit({
+			content: `✅ Successfully created ${teams.length} teams!\n\n${teamList}\n\n*Channels will be deleted after 5 minutes of being empty.*`,
+		});
+	} catch (error) {
+		console.error("❌ Error in PUG command:", error);
+		await message.reply(`❌ An error occurred: ${error.message}`);
+	}
+}
+
+// Cleanup empty temporary channels
+function startChannelCleanup() {
+	setInterval(async () => {
+		const currentTime = Date.now();
+		const channelsToRemove = [];
+
+		for (const [channelId, info] of tempChannels.entries()) {
+			try {
+				const channel = await client.channels.fetch(channelId);
+
+				if (!channel) {
+					channelsToRemove.push(channelId);
+					continue;
+				}
+
+				// Check if channel is empty
+				if (channel.members.size === 0) {
+					// Check if empty for more than 5 minutes
+					const timeDiff = currentTime - info.lastOccupied;
+					if (timeDiff > 5 * 60 * 1000) {
+						// 5 minutes in ms
+						await channel.delete("PUG channel empty for 5+ minutes");
+						channelsToRemove.push(channelId);
+						console.log(`🗑️ Deleted empty PUG channel: ${channel.name}`);
+					}
+				} else {
+					// Update last occupied time
+					info.lastOccupied = currentTime;
+				}
+			} catch (error) {
+				if (error.code === 10003) {
+					// Unknown Channel - already deleted
+					channelsToRemove.push(channelId);
+				} else {
+					console.error(`❌ Error checking channel ${channelId}:`, error);
+				}
+			}
+		}
+
+		// Remove deleted channels from tracking
+		for (const channelId of channelsToRemove) {
+			tempChannels.delete(channelId);
+		}
+	}, 60000); // Check every minute
+}
+
 client.on("messageCreate", async (message) => {
 	if (message.author.bot) return;
 
@@ -129,6 +314,12 @@ client.on("messageCreate", async (message) => {
 	const gotokitchen = message.content
 		.toLowerCase()
 		.includes("go back to the kitchen");
+
+	// Handle PUG command
+	if (isMentioned && message.content.toLowerCase().includes("pug us")) {
+		await handlePugCommand(message);
+		return;
+	}
 
 	if (isMentioned && containsSandwich) {
 		await message.reply(":bread:\n:cheese:\n:leafy_green:\n:bread:");
