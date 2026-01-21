@@ -459,4 +459,4 @@ cron.schedule(
 );
 
 client.login(process.env.DISCORD_TOKEN);
-connectWithRetry(); // background process
+//connectWithRetry(); // no db currently
