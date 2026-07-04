@@ -69,7 +69,7 @@ async function connectWithRetry(retries = 10, delay = 180000) {
 			const retryTime = delay / 60000;
 
 			console.warn(
-				`[${new Date().toISOString()}] ❌ MongoDB connection failed. Retrying in ${retryTime}min... (Attempt ${retryNum}/10)`
+				`[${new Date().toISOString()}] ❌ MongoDB connection failed. Retrying in ${retryTime}min... (Attempt ${retryNum}/10)`,
 			);
 
 			// log current IP and alert log
@@ -88,12 +88,11 @@ async function connectWithRetry(retries = 10, delay = 180000) {
 									});
 									await tempClient.login(process.env.DISCORD_TOKEN);
 
-									const channel = await tempClient.channels.fetch(
-										"883631359699087380"
-									);
+									const channel =
+										await tempClient.channels.fetch("883631359699087380");
 									if (channel && channel.isTextBased()) {
 										await channel.send(
-											`🚨 MongoDB connection attempt **${retryNum}/10** failed.\nIP \`${ip}\` may not be whitelisted.\nRetrying in ${retryTime}min...`
+											`🚨 MongoDB connection attempt **${retryNum}/10** failed.\nIP \`${ip}\` may not be whitelisted.\nRetrying in ${retryTime}min...`,
 										);
 										console.log("📣 Retry alert sent to Discord.");
 									}
@@ -127,7 +126,7 @@ async function handlePugCommand(message) {
 		// Check if user has moderator permissions
 		if (!message.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
 			await message.reply(
-				"❌ You need 'Manage Channels' permission to use this command."
+				"❌ You need 'Manage Channels' permission to use this command.",
 			);
 			return;
 		}
@@ -135,7 +134,7 @@ async function handlePugCommand(message) {
 		// Check if user is in a voice channel
 		if (!message.member.voice || !message.member.voice.channel) {
 			await message.reply(
-				"❌ You must be in a voice channel to use this command."
+				"❌ You must be in a voice channel to use this command.",
 			);
 			return;
 		}
@@ -149,7 +148,7 @@ async function handlePugCommand(message) {
 
 		if (!nMatch || !sMatch) {
 			await message.reply(
-				"❌ Invalid format. Use: `@bot pug us N<teams> S<size>`\nExample: `@bot pug us N2 S5`"
+				"❌ Invalid format. Use: `@bot pug us N<teams> S<size>`\nExample: `@bot pug us N2 S5`",
 			);
 			return;
 		}
@@ -159,7 +158,7 @@ async function handlePugCommand(message) {
 
 		if (numTeams < 1 || teamSize < 1) {
 			await message.reply(
-				"❌ Number of teams and team size must be at least 1."
+				"❌ Number of teams and team size must be at least 1.",
 			);
 			return;
 		}
@@ -170,7 +169,7 @@ async function handlePugCommand(message) {
 
 		if (members.size < numTeams) {
 			await message.reply(
-				`❌ Not enough members in the voice channel. Need at least ${numTeams} members for ${numTeams} teams.`
+				`❌ Not enough members in the voice channel. Need at least ${numTeams} members for ${numTeams} teams.`,
 			);
 			return;
 		}
@@ -182,7 +181,7 @@ async function handlePugCommand(message) {
 					members.size
 				} members available, but only ${expectedTotal} will be split into teams. ${
 					members.size - expectedTotal
-				} will remain in the original channel.`
+				} will remain in the original channel.`,
 			);
 		}
 
@@ -209,7 +208,7 @@ async function handlePugCommand(message) {
 		const createdChannels = [];
 
 		const statusMsg = await message.reply(
-			`🎮 Creating ${teams.length} team channels...`
+			`🎮 Creating ${teams.length} team channels...`,
 		);
 
 		for (let i = 0; i < teams.length; i++) {
@@ -247,7 +246,7 @@ async function handlePugCommand(message) {
 		const teamList = teams
 			.map(
 				(team, i) =>
-					`**Team ${i + 1}**: ${team.map((m) => m.displayName).join(", ")}`
+					`**Team ${i + 1}**: ${team.map((m) => m.displayName).join(", ")}`,
 			)
 			.join("\n");
 
@@ -311,6 +310,8 @@ client.on("messageCreate", async (message) => {
 
 	const isMentioned = message.mentions.has(client.user);
 	const containsSandwich = message.content.toLowerCase().includes("sandwich");
+	const saysRoll = message.content.toLowerCase().includes("roll me a");
+
 	const gotokitchen = message.content
 		.toLowerCase()
 		.includes("go back to the kitchen");
@@ -324,6 +325,11 @@ client.on("messageCreate", async (message) => {
 	if (isMentioned && containsSandwich) {
 		await message.reply(":bread:\n:cheese:\n:leafy_green:\n:bread:");
 		setTimeout(() => message.channel.send(":palm_up_hand: :sandwich:"), 2000);
+		return;
+	}
+
+	if (isMentioned && saysRoll) {
+		await message.reply("<a:RollD6:1523056968393162792>");
 		return;
 	}
 
@@ -351,7 +357,7 @@ client.on("messageCreate", async (message) => {
 	if (message.channel.id !== process.env.CHANNEL_ID) return;
 
 	const images = message.attachments.filter((att) =>
-		att.contentType?.startsWith("image")
+		att.contentType?.startsWith("image"),
 	);
 
 	if (images.size > 0) {
@@ -390,15 +396,15 @@ client.on("messageCreate", async (message) => {
 					if (reaction.emoji.name === "✅") {
 						await Image.create({ url: image.url });
 						console.log(
-							`✅ Image approved by ${user?.tag}. Saved: ${image.url}`
+							`✅ Image approved by ${user?.tag}. Saved: ${image.url}`,
 						);
 						await approvalMsg.reply(
-							`✅ Approved by ${user?.username}. Image saved!`
+							`✅ Approved by ${user?.username}. Image saved!`,
 						);
 					} else if (reaction.emoji.name === "❌") {
 						console.log(`❌ Image rejected by ${user?.tag}. Not saved.`);
 						await approvalMsg.reply(
-							`❌ Rejected by ${user?.username}. Image not saved.`
+							`❌ Rejected by ${user?.username}. Image not saved.`,
 						);
 					}
 				} else {
@@ -455,7 +461,7 @@ cron.schedule(
 	},
 	{
 		timezone: "Etc/UTC",
-	}
+	},
 );
 
 client.login(process.env.DISCORD_TOKEN);
