@@ -348,7 +348,7 @@ async function handleInvincileInitiative(message) {
 		const cards = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 		for (let i = 0; i < playersInVc.length; i++) {
 			//select number card for each player then reduce that by 1
-			await message.reply("cards", cards);
+			await message.reply("cards", cards.toString());
 
 			const randomNumber = Math.floor(Math.random() * cards.length);
 			// use the random number to select and delete a card
@@ -356,7 +356,7 @@ async function handleInvincileInitiative(message) {
 			await message.reply(playersInVc[i], cards[randomNumber]);
 			cards.splice(randomNumber, 1);
 		}
-		await message.reply(`members \n ${playersInVc}`);
+		await message.reply(`members in vc ${playersInVc}`);
 	} catch (error) {
 		console.error(" AAAHHH ERROR IN ROLLING COMMAND !!! ", error);
 		await message.reply(`❌ An error occurred soz chief: ${error.message}`);
@@ -500,6 +500,7 @@ cron.schedule(
 		const messages = [
 			"Good morning! how is everyone doing today?",
 			"Wazzzzaaaa!!!",
+			"Spoon probably thinking about Quail Eggs rn...",
 			"Top o' the mornin' to ya!",
 			"Hark! Yon sun hath riseth again. 🇬🇧",
 			"Arrr matey, wake ye bones! 🏴‍☠️",
