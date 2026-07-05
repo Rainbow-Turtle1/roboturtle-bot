@@ -354,7 +354,7 @@ async function handleInvincileInitiative(message) {
 			// use the random number to select and delete a card
 
 			await message.reply(playersInVc[i], cards[randomNumber]);
-			fruits.splice(randomNumber, 1);
+			cards.splice(randomNumber, 1);
 		}
 		await message.reply(`members \n ${playersInVc}`);
 	} catch (error) {
