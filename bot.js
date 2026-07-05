@@ -331,7 +331,7 @@ async function handleInvincileInitiative(message) {
 		const playerList = members
 			.map(
 				(members, i) =>
-					`**Team ${i + 1}**: ${team.map((m) => m.displayName).join(", ")}`,
+					`**Team ${i + 1}**: ${members.map((m) => m.displayName).join(", ")}`,
 			)
 			.join("\n");
 
