@@ -353,7 +353,7 @@ async function handleInvincileInitiative(message) {
 			const randomNumber = Math.floor(Math.random() * cards.length);
 			// use the random number to select and delete a card
 
-			await message.reply(playersInVc[i], cards[randomNumber]);
+			await message.reply("player:", playersInVc[i], cards[randomNumber]);
 			cards.splice(randomNumber, 1);
 		}
 		await message.reply(`members in vc ${playersInVc}`);
