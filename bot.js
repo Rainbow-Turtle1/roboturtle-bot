@@ -346,6 +346,9 @@ async function handleInvincileInitiative(message) {
 		// 	.join("\n");
 
 		const cards = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+		await message.reply("cards befor loop ", cards);
+		await message.reply("playersInVcLength ", playersInVc.length);
+		await message.reply("playerInVc value", playersInVc);
 		for (let i = 0; i < playersInVc.length; i++) {
 			//select number card for each player then reduce that by 1
 			await message.reply("cards", cards.toString());
