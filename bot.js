@@ -323,6 +323,8 @@ async function handleInvincileInitiative(message) {
 			return;
 		}
 
+		const statusMsg = await message.reply(`<a:RollD6:1523056968393162792>`);
+
 		const content = message.content.toLowerCase();
 
 		const voiceChannel = message.member.voice.channel;
@@ -330,48 +332,62 @@ async function handleInvincileInitiative(message) {
 
 		const playersInVc = Array.from(members.values());
 
-		// const playerList = memberArray
-
-		// const membersInVc = [];
-		// for (let i = 0; i < numTeams; i++) {
-		// 	const team = memberArray.slice(i * teamSize, (i + 1) * teamSize);
-		// 	membersInVc.push();
-
-		// }
-		// const playerList = membersInVc
-		// 	.map(
-		// 		(membersInVc, i) =>
-		// 			`**Team ${i + 1}**: ${membersInVc.map((m) => m.displayName).join(", ")}`,
-		// 	)
-		// 	.join("\n");
-
-		// HERE
-
-		const cards = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
-		//await message.reply("cards befor loop ", cards.toString);
-		console.log("cards array before loop = ", cards);
-		//await message.reply("playersInVcLength ", playersInVc.length);
-		//console.log("playersInVcLength = ", playersInVc.length);
-
-		//fetch usernames from thing
-
-		//await message.reply("playerInVc value", playersInVc);
-		//console.log("playersInVc = ", playersInVc);
+		const cards = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+		// console.log("cards array before loop = ", cards);
+		const orderedArray = [[0]];
+		// orderedMessage = "";
+		//const playersInVc = ["MR", "Mrs", "SIR", "Billy"];
 
 		for (let i = 0; i < playersInVc.length; i++) {
-			//select number card for each player then reduce that by 1
-			//await message.reply("cards", cards.toString());
+			const randomNumber = Math.floor(Math.random() * cards.length); // select random card index in cards.length
 
-			const randomNumber = Math.floor(Math.random() * cards.length);
-			//await message.reply(`number selected: ${randomNumber}`);
-			// use the random number to select and delete a card
-
-			await message.reply(
+			console.log(
 				`player ${i} : ${playersInVc[i].displayName} , Card ${cards[randomNumber]}`,
 			);
-			cards.splice(randomNumber, 1);
-			console.log(`cards array loop after loop ${i} = ${cards}`);
+			const thisPlayerAndCard = [
+				cards[randomNumber],
+				playersInVc[i].displayName,
+			];
+
+			// console.log(`This player and card:  ${thisPlayerAndCard}`);
+			// if (orderedArray.length === 0) {
+			// 	orderedArray.splice(0, 0, thisPlayerAndCard);
+			// 	console.log(`First item added to Ordered array = ${orderedArray}`);
+			// } else {
+			for (let n = 0; n < orderedArray.length; n++) {
+				console.log(
+					`in loop ${n} \n current card number ${cards[randomNumber]} \n checking against ${orderedArray[n][0]}`,
+				);
+				console.log(
+					`${cards[randomNumber]} > ${orderedArray[n][0]} = ${cards[randomNumber] > orderedArray[n][0]}`,
+				);
+				if (cards[randomNumber] > orderedArray[n][0]) {
+					orderedArray.splice(n, 0, thisPlayerAndCard);
+					break;
+				}
+			}
+			cards.splice(randomNumber, 1); //remove selected card from card array
+			// console.log(`cards array loop after loop ${i} = ${cards}`); //debugging cards array in case of not working
 		}
+		console.log(`ordered array (yes 0) = ${orderedArray}`);
+
+		endArray = orderedArray.length - 1;
+		console.log(`endArray value = ${orderedArray[endArray]}`);
+		orderedArray.splice(endArray, 1);
+
+		console.log(
+			`\n --------\n ordered array in arrays = \n ${orderedArray[0]} \n ${orderedArray[1]} \n ${orderedArray[2]} \n ${orderedArray[3]} \n --------\n`,
+		);
+
+		console.log(`ordered array (nos 0) = ${orderedArray}`);
+		// orderedMessage = `Message: ${orderedArray.join("\n").join("-")}`;
+		orderedMessage = orderedArray.map((e) => e.join("-")).join(" \n");
+		console.log(orderedMessage);
+
+		await statusMsg.edit({
+			content: `Drew initiative cards ------------- \n ${orderedMessage}`,
+		});
+
 		await message.reply(`members in vc ${playersInVc}`);
 	} catch (error) {
 		console.error(" AAAHHH ERROR IN ROLLING COMMAND !!! ", error);
