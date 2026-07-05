@@ -348,9 +348,9 @@ async function handleInvincileInitiative(message) {
 		// HERE
 
 		const cards = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
-		await message.reply("cards befor loop ", cards.toString);
+		//await message.reply("cards befor loop ", cards.toString);
 		console.log("cards array = ", cards);
-		await message.reply("playersInVcLength ", playersInVc.length);
+		//await message.reply("playersInVcLength ", playersInVc.length);
 		console.log("playersInVcLength = ", playersInVc.length);
 
 		//fetch usernames from thing
@@ -363,10 +363,11 @@ async function handleInvincileInitiative(message) {
 			//await message.reply("cards", cards.toString());
 
 			const randomNumber = Math.floor(Math.random() * cards.length);
+			await message.reply(`number selected: ${randomNumber}`);
 			// use the random number to select and delete a card
 
 			await message.reply(
-				`player ${i} : ${playersInVc[i].displayName} , Card ${cards[randomNumber]}`,
+				`player ${i} : ${playersInVc[i].username} , Card ${cards[randomNumber]}`,
 			);
 			cards.splice(randomNumber, 1);
 		}
