@@ -376,7 +376,7 @@ async function handleInvincileInitiative(message) {
 		orderedArray.splice(endArray, 1);
 
 		console.log(
-			`\n --------\n ordered array in arrays = \n ${orderedArray[0]} \n ${orderedArray[1]} \n ${orderedArray[2]} \n ${orderedArray[3]} \n --------\n`,
+			`\n--------\n ordered array in arrays = \n${orderedArray[0]} \n${orderedArray[1]} \n${orderedArray[2]} \n${orderedArray[3]} \n--------\n`,
 		);
 
 		console.log(`ordered array (nos 0) = ${orderedArray}`);
@@ -385,10 +385,10 @@ async function handleInvincileInitiative(message) {
 		console.log(orderedMessage);
 
 		await statusMsg.edit({
-			content: `Drew initiative cards ------------- \n ${orderedMessage}`,
+			content: `Drew initiative cards \n------------- \n${orderedMessage}`,
 		});
 
-		await message.reply(`members in vc ${playersInVc}`);
+		// await message.reply(`members in vc ${playersInVc}`);
 	} catch (error) {
 		console.error(" AAAHHH ERROR IN ROLLING COMMAND !!! ", error);
 		await message.reply(`❌ An error occurred soz chief: ${error.message}`);
