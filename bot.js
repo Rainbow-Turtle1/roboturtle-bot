@@ -328,9 +328,7 @@ async function handleInvincileInitiative(message) {
 		const voiceChannel = message.member.voice.channel;
 		const members = voiceChannel.members.filter((m) => !m.user.bot);
 
-		await statusMsg.edit({
-			content: `${members}*`,
-		});
+		await message.reply(`members ${members}`);
 	} catch (error) {
 		console.error(" AAAHHH ERROR IN ROLLING COMMAND !!! ", error);
 		await message.reply(`❌ An error occurred soz chief: ${error.message}`);
