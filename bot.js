@@ -208,7 +208,7 @@ async function handlePugCommand(message) {
 		const createdChannels = [];
 
 		const statusMsg = await message.reply(
-			`🎮 Creating ${teams.length} team channels...`,
+			`Creating ${teams.length} team channels...`,
 		);
 
 		for (let i = 0; i < teams.length; i++) {
@@ -305,12 +305,48 @@ function startChannelCleanup() {
 	}, 60000); // Check every minute
 }
 
+async function handleInvincileInitiative(message) {
+	try {
+		// Check if user has moderator permissions
+		if (!message.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+			await message.reply(
+				"❌ You need 'Manage Channels' permission to use this command.",
+			);
+			return;
+		}
+
+		// Check if user is in a voice channel
+		if (!message.member.voice || !message.member.voice.channel) {
+			await message.reply(
+				"❌ You must be in a voice channel to use this command.",
+			);
+			return;
+		}
+
+		const content = message.content.toLowerCase();
+
+		const voiceChannel = message.member.voice.channel;
+		const members = voiceChannel.members.filter((m) => !m.user.bot);
+
+		await statusMsg.edit({
+			content: `${members}*`,
+		});
+	} catch (error) {
+		console.error(" AAAHHH ERROR IN ROLLING COMMAND !!! ", error);
+		await message.reply(`❌ An error occurred soz chief: ${error.message}`);
+	}
+}
+
 client.on("messageCreate", async (message) => {
 	if (message.author.bot) return;
 
 	const isMentioned = message.mentions.has(client.user);
 	const containsSandwich = message.content.toLowerCase().includes("sandwich");
-	const saysRoll = message.content.toLowerCase().includes("roll me a");
+	const saysRoll = message.content.toLowerCase().includes("roll");
+
+	const invincibleInitiative = message.content
+		.toLowerCase()
+		.includes("do the thing"); // for drawing turn orders for players
 
 	const gotokitchen = message.content
 		.toLowerCase()
@@ -319,6 +355,11 @@ client.on("messageCreate", async (message) => {
 	// Handle PUG command
 	if (isMentioned && message.content.toLowerCase().includes("pug us")) {
 		await handlePugCommand(message);
+		return;
+	}
+
+	if (isMentioned && invincibleInitiative) {
+		await handleInvincileInitiative(message);
 		return;
 	}
 
