@@ -328,14 +328,24 @@ async function handleInvincileInitiative(message) {
 		const voiceChannel = message.member.voice.channel;
 		const members = voiceChannel.members.filter((m) => !m.user.bot);
 
-		const playerList = members
-			.map(
-				(members, i) =>
-					`**Team ${i + 1}**: ${members.map((m) => m.displayName).join(", ")}`,
-			)
-			.join("\n");
+		const playersInVc = Array.from(members.values());
 
-		await message.reply(`members \n ${playerList}`);
+		// const playerList = memberArray
+
+		// const membersInVc = [];
+		// for (let i = 0; i < numTeams; i++) {
+		// 	const team = memberArray.slice(i * teamSize, (i + 1) * teamSize);
+		// 	membersInVc.push();
+
+		// }
+		// const playerList = membersInVc
+		// 	.map(
+		// 		(membersInVc, i) =>
+		// 			`**Team ${i + 1}**: ${membersInVc.map((m) => m.displayName).join(", ")}`,
+		// 	)
+		// 	.join("\n");
+
+		await message.reply(`members \n ${playersInVc}`);
 	} catch (error) {
 		console.error(" AAAHHH ERROR IN ROLLING COMMAND !!! ", error);
 		await message.reply(`❌ An error occurred soz chief: ${error.message}`);
