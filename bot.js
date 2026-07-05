@@ -345,6 +345,17 @@ async function handleInvincileInitiative(message) {
 		// 	)
 		// 	.join("\n");
 
+		const cards = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+		for (let i = 0; i < playersInVc.length; i++) {
+			//select number card for each player then reduce that by 1
+			await channel.send(cards);
+
+			const randomNumber = Math.floor(Math.random() * messages.length);
+			// use the random number to select and delete a card
+
+			await channel.send(playersInVc[i], cards[randomNumber]);
+			fruits.splice(randomNumber, 1);
+		}
 		await message.reply(`members \n ${playersInVc}`);
 	} catch (error) {
 		console.error(" AAAHHH ERROR IN ROLLING COMMAND !!! ", error);
@@ -488,6 +499,7 @@ cron.schedule(
 
 		const messages = [
 			"Good morning! how is everyone doing today?",
+			"Wazzzzaaaa!!!",
 			"Top o' the mornin' to ya!",
 			"Hark! Yon sun hath riseth again. 🇬🇧",
 			"Arrr matey, wake ye bones! 🏴‍☠️",
